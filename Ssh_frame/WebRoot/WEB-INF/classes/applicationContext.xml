@@ -1,0 +1,80 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  - Application context definition for JPetStore's business layer.
+  - Contains bean references to the transaction manager and to the DAOs in
+  - dataAccessContext-local/jta.xml (see web.xml's "contextConfigLocation").
+  -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:aop="http://www.springframework.org/schema/aop"
+		xmlns:tx="http://www.springframework.org/schema/tx"
+		xmlns:p="http://www.springframework.org/schema/p"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xsi:schemaLocation="
+			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+			http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd
+			http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+	<!-- 这个是dbcp数据源 -->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="driverClassName" value="oracle.jdbc.OracleDriver"/>
+		<property name="url" value="jdbc:oracle:thin:@127.0.0.1:1521:ORCL"/>
+		<property name="username" value="A_hr"/>
+		<property name="password" value="orcl"/>
+	</bean>
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate3.LocalSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"/>
+		<!-- 添加hibernate配置参数 -->
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">org.hibernate.dialect.Oracle9Dialect</prop>
+				<prop key="hibernate.show_sql">true</prop>
+				<prop key="hibernate.format_sql">true</prop>
+			</props>
+		</property>
+		<!-- 添加对象关系映射文件 -->
+		<property name="mappingDirectoryLocations">
+			<list>
+				<value>classpath:com/yjm/entity</value>
+			</list>
+		</property>
+	</bean>
+	<!-- dao层 -->
+	<bean id="dao" class="com.yjm.dao.impl.DaoImpl">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+	<bean id="dao2" class="com.yjm.dao.impl.DaoImpl2">
+		<constructor-arg ref="sessionFactory"/>
+	</bean>
+	<!-- service层 -->
+	<bean id="userRegisterImpl" class="com.yjm.service.impl.UserRegisterImpl">
+		<property name="dao" ref="dao2"/>
+	</bean>
+	<!-- 定义事务管理器 -->
+	<bean id="txManager" class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"/>	
+	</bean>
+	<!-- 事务规则 -->
+	<tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="login*" read-only="true" />
+    		<tx:method name="search*" read-only="true" />
+    		<tx:method name="query*" read-only="true" />
+    		<tx:method name="get*" read-only="true" />
+    		<tx:method name="register*" read-only="false" isolation="DEFAULT" propagation="REQUIRED" />
+    		<tx:method name="do*" read-only="false" isolation="DEFAULT" propagation="REQUIRED" />
+    		<tx:method name="update*" read-only="false" isolation="DEFAULT" propagation="REQUIRED" />
+    		<tx:method name="save*" read-only="false" isolation="DEFAULT" propagation="REQUIRED" />
+    		<tx:method name="add*" read-only="false" isolation="DEFAULT" propagation="REQUIRED" />
+    		<tx:method name="delete*" read-only="false" isolation="DEFAULT" propagation="REQUIRED" />
+    		<tx:method name="*" read-only="true"/>
+		</tx:attributes>
+	</tx:advice>
+	<aop:config>
+		<aop:pointcut expression="execution(* com.yjm.service.impl.*.*(..))" id="servicePointCut"/>
+		<aop:advisor advice-ref="txAdvice" pointcut-ref="servicePointCut"/>
+	</aop:config>
+	<bean name="registerAction" class="com.yjm.action.RegisterAction" scope="prototype">
+		<property name="ur" ref="userRegisterImpl"></property>
+	</bean>
+</beans>
